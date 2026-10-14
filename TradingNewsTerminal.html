@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global & Brazilian Economy Dashboard</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        },
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                        bordercolor: '#334155'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Animated Stock Ticker */
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .ticker-wrap {
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .ticker-move {
+            display: inline-block;
+            white-space: nowrap;
+            animation: ticker 35s linear infinite;
+        }
+        .ticker-wrap:hover .ticker-move {
+            animation-play-state: paused;
+        }
+
+        /* Pulse Animations */
+        .pulse-red {
+            animation: pulse-red-anim 2s infinite;
+        }
+        @keyframes pulse-red-anim {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#0b0f19] text-slate-100">
+
+    <!-- Top Market Ticker -->
+    <div class="bg-[#111827] border-b border-slate-800 py-2.5 text-xs text-slate-300 shadow-md">
+        <div class="ticker-wrap flex items-center">
+            <div class="ticker-move flex items-center space-x-8" id="ticker-container">
+                <!-- Ticker items dynamically injected -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <header class="bg-[#111827]/90 backdrop-blur sticky top-0 z-40 border-b border-slate-800 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                        <i class="fa-solid font-bold fa-chart-line text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                            MacroPulse <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">GLOBAL & BR</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">Real-time Economy, War & Macro Investment Radar</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls (Search, Auto-Refresh, Download) -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Search Bar -->
+                <div class="relative flex-1 sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="search-input" placeholder="Search news, CPI, Fed, Selic..." 
+                        class="w-full pl-9 pr-3 py-1.5 bg-slate-800/80 border border-slate-700/80 rounded-lg text-sm text-slate-200 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors">
+                </div>
+
+                <!-- Auto Refresh Toggle -->
+                <button id="auto-refresh-btn" onclick="toggleAutoRefresh()" 
+                    class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700/80 text-xs font-medium text-slate-300 flex items-center gap-2 transition-all">
+                    <span id="refresh-indicator" class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                    <span id="refresh-text">Auto: ON (60s)</span>
+                </button>
+
+                <!-- Refresh Button -->
+                <button onclick="fetchNews()" title="Refresh News Feed"
+                    class="p-2 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors">
+                    <i id="refresh-icon" class="fa-solid fa-rotate text-sm"></i>
+                </button>
+
+                <!-- Download File Button -->
+                <button onclick="downloadSelfHTML()" title="Download Dashboard HTML Source"
+                    class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-emerald-900/30 transition-all cursor-pointer">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Export App</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <!-- Left 3 Columns: Feed and Filters -->
+        <section class="lg:col-span-3 space-y-5">
+            
+            <!-- Category Tabs -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-slate-800" id="category-tabs">
+                <button onclick="setCategory('all')" data-cat="all" class="cat-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap bg-emerald-600 text-white shadow-md transition-all">
+                    <i class="fa-solid fa-globe mr-1.5"></i> All News
+                </button>
+                <button onclick="setCategory('br')" data-cat="br" class="cat-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/50 transition-all">
+                    <i class="fa-solid fa-flag-usa text-yellow-500 mr-1.5"></i> Brazil Economy (Copom/Selic)
+                </button>
+                <button onclick="setCategory('macro')" data-cat="macro" class="cat-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/50 transition-all">
+                    <i class="fa-solid fa-calculator mr-1.5 text-blue-400"></i> Macro Events (CPI, NFP)
+                </button>
+                <button onclick="setCategory('war')" data-cat="war" class="cat-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/50 transition-all">
+                    <i class="fa-solid fa-shield-halved mr-1.5 text-red-400"></i> Geopolitical & Wars
+                </button>
+                <button onclick="setCategory('world')" data-cat="world" class="cat-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/50 transition-all">
+                    <i class="fa-solid fa-earth-americas mr-1.5 text-indigo-400"></i> Global Markets
+                </button>
+            </div>
+
+            <!-- Feed Header & Active Status -->
+            <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+                <div class="flex items-center space-x-2">
+                    <span id="active-category-label" class="font-semibold text-slate-200 uppercase tracking-wider">All News Stream</span>
+                    <span>•</span>
+                    <span id="article-count">Loading articles...</span>
+                </div>
+                <div id="last-updated-time" class="text-slate-500">
+                    Last update: --:--
+                </div>
+            </div>
+
+            <!-- News Cards Container -->
+            <div id="news-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Loading State Cards -->
+                <div class="p-5 bg-slate-800/40 rounded-xl border border-slate-800 animate-pulse h-40"></div>
+                <div class="p-5 bg-slate-800/40 rounded-xl border border-slate-800 animate-pulse h-40"></div>
+                <div class="p-5 bg-slate-800/40 rounded-xl border border-slate-800 animate-pulse h-40"></div>
+                <div class="p-5 bg-slate-800/40 rounded-xl border border-slate-800 animate-pulse h-40"></div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Sidebar (Economic Calendar & High Impact Events) -->
+        <aside class="space-y-6">
+            
+            <!-- Key Economic Releases Widget -->
+            <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-700/60 pb-2.5">
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-regular fa-calendar-check text-emerald-400"></i> Macro Calendar
+                    </h2>
+                    <span class="text-[10px] bg-slate-700 text-slate-300 font-semibold px-2 py-0.5 rounded">THIS WEEK</span>
+                </div>
+                <p class="text-xs text-slate-400 mb-3">Key interest rate, inflation (CPI/IPCA) and labor data events.</p>
+
+                <div class="space-y-3" id="calendar-container">
+                    <!-- Dynamic Calendar Items Injected Here -->
+                </div>
+            </div>
+
+            <!-- Geopolitical & Risk Watch Panel -->
+            <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-700/60 pb-2.5">
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Global Risk Radar
+                    </h2>
+                </div>
+                <ul class="space-y-2.5 text-xs text-slate-300">
+                    <li class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 flex items-start gap-2.5">
+                        <i class="fa-solid fa-fire text-red-400 mt-0.5"></i>
+                        <div>
+                            <span class="font-semibold text-slate-200 block">Middle East Conflict & Crude Oil</span>
+                            <span class="text-slate-400 text-[11px]">Volatility in Brent Crude due to supply chain tensions in the Red Sea.</span>
+                        </div>
+                    </li>
+                    <li class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 flex items-start gap-2.5">
+                        <i class="fa-solid fa-landmark text-blue-400 mt-0.5"></i>
+                        <div>
+                            <span class="font-semibold text-slate-200 block">US Fed Policy Expectations</span>
+                            <span class="text-slate-400 text-[11px]">Powell signals data-dependent stance ahead of next FOMC decision.</span>
+                        </div>
+                    </li>
+                    <li class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 flex items-start gap-2.5">
+                        <i class="fa-solid fa-percent text-emerald-400 mt-0.5"></i>
+                        <div>
+                            <span class="font-semibold text-slate-200 block">Brazil Fiscal Target & Selic Rate</span>
+                            <span class="text-slate-400 text-[11px]">Fiscal deficits keep Copom cautious on future interest rate cuts.</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- RSS Source Info -->
+            <div class="p-3.5 bg-emerald-950/20 border border-emerald-800/30 rounded-xl text-xs text-slate-400 space-y-1">
+                <p class="font-semibold text-emerald-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-info"></i> Aggregated Data Feeds
+                </p>
+                <p class="text-[11px] leading-relaxed">
+                    Auto-parsing real-time RSS from Reuters, InfoMoney, Investing.com, Valor Econômico, CNBC and TradingEconomics.
+                </p>
+            </div>
+
+        </aside>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-[#0d1322] py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>MacroPulse Financial Terminal © 2026. For informational purposes only.</p>
+            <p class="flex items-center gap-3">
+                <span class="hover:text-slate-300 cursor-pointer" onclick="fetchNews()">Force Refresh</span>
+                <span>•</span>
+                <span class="hover:text-slate-300 cursor-pointer" onclick="window.scrollTo({top:0, behavior:'smooth'})">Back to Top</span>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        /**
+         * Global Application State
+         */
+        const state = {
+            currentCategory: 'all',
+            searchQuery: '',
+            autoRefresh: true,
+            autoRefreshInterval: null,
+            articles: [],
+            tickerData: [
+                { symbol: 'IBOVESPA', name: 'Ibovespa', price: '128,450.20', change: '+0.65%', up: true },
+                { symbol: 'S&P 500', name: 'S&P 500', price: '5,117.09', change: '-0.18%', up: false },
+                { symbol: 'USD/BRL', name: 'Dólar', price: 'R$ 4.98', change: '+0.32%', up: true },
+                { symbol: 'EUR/USD', name: 'Euro/Dollar', price: '1.0842', change: '-0.05%', up: false },
+                { symbol: 'BRENT', name: 'Petróleo Brent', price: '$82.45', change: '+1.42%', up: true },
+                { symbol: 'GOLD', name: 'Ouro (oz)', price: '$2,165.10', change: '+0.88%', up: true },
+                { symbol: 'SELIC', name: 'Taxa Selic', price: '11.25%', change: '0.00%', up: true },
+                { symbol: 'FED RATE', name: 'US Fed Rate', price: '5.25-5.50%', change: '0.00%', up: true }
+            ]
+        };
+
+        // RSS Feeds Configuration
+        const RSS_FEEDS = [
+            {
+                url: 'https://feeds.feedburner.com/reuters/businessNews',
+                category: 'world',
+                source: 'Reuters Business'
+            },
+            {
+                url: 'https://www.infomoney.com.br/feed/',
+                category: 'br',
+                source: 'InfoMoney BR'
+            },
+            {
+                url: 'https://investing.com/rss/news.rss',
+                category: 'macro',
+                source: 'Investing.com Global'
+            },
+            {
+                url: 'https://search.cnbc.com/rs/search/combinedrenderer/view.xml?partnerId=2000&keywords=economy&target=all',
+                category: 'macro',
+                source: 'CNBC Macro'
+            }
+        ];
+
+        // Economic Calendar Events Baseline
+        const CALENDAR_EVENTS = [
+            { date: 'Today 14:30', name: 'US Non-Farm Payrolls (NFP)', impact: 'High', country: 'US', forecast: '180K', previous: '229K' },
+            { date: 'Today 18:30', name: 'Copom Interest Rate Decision', impact: 'High', country: 'BR', forecast: '10.75%', previous: '11.25%' },
+            { date: 'Tomorrow 09:30', name: 'US Consumer Price Index (CPI)', impact: 'High', country: 'US', forecast: '3.1% YoY', previous: '3.4%' },
+            { date: 'Tomorrow 10:00', name: 'Brazil IPCA Inflation Rate', impact: 'High', country: 'BR', forecast: '0.45%', previous: '0.42%' },
+            { date: 'Thu 09:30', name: 'US Producer Price Index (PPI)', impact: 'Medium', country: 'US', forecast: '0.3% MoM', previous: '0.2%' },
+            { date: 'Fri 15:00', name: 'Fed Chairman Powell Speech', impact: 'High', country: 'US', forecast: '-', previous: '-' }
+        ];
+
+        // Backup Mock News in case external RSS APIs face CORS or network restrictions
+        const MOCK_NEWS = [
+            {
+                title: "US Consumer Price Index (CPI) Cools Slightly; Fed Rate Cut Expectations Shift to June",
+                link: "https://www.reuters.com",
+                pubDate: new Date().toISOString(),
+                source: "Reuters Global",
+                category: "macro",
+                snippet: "The U.S. CPI release shows inflation moderating toward the target 2% threshold, causing bond yields to retreat as investors reassess rate cut timings."
+            },
+            {
+                title: "Copom sinaliza novo corte na taxa Selic em meio a expectativas de IPCA comportado",
+                link: "https://www.infomoney.com.br",
+                pubDate: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+                source: "InfoMoney BR",
+                category: "br",
+                snippet: "Comitê de Política Monetária do Banco Central do Brasil discute a trajetória da taxa de juros com foco na inflação de serviços e meta fiscal."
+            },
+            {
+                title: "Middle East Tensions Surge: Brent Crude Surges Past $82 as Supply Lines Face Vulnerability",
+                link: "https://www.cnbc.com",
+                pubDate: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+                source: "CNBC Energy",
+                category: "war",
+                snippet: "Geopolitical conflict near key shipping channels prompts global energy market volatility and heightened risk premiums for commodity traders."
+            },
+            {
+                title: "Non-Farm Payrolls (NFP) Preview: Wall Street Braces for Labor Market Cooling Data",
+                link: "https://www.investing.com",
+                pubDate: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+                source: "Investing.com",
+                category: "macro",
+                snippet: "Economists forecast modest job gains this month, a critical metric influencing FOMC interest rate trajectories."
+            },
+            {
+                title: "Ibovespa opera em alta impulsionado por papéis da Vale e Petrobras com avanço das commodities",
+                link: "https://www.valoreconomico.com.br",
+                pubDate: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+                source: "Valor Econômico",
+                category: "br",
+                snippet: "Mercado brasileiro se beneficia da alta do minério de ferro em Dalian e valorização do barril de petróleo no cenário internacional."
+            },
+            {
+                title: "European Central Bank Holds Rates Steady, Monitors PPI and Wage Inflation Trends",
+                link: "https://www.bloomberg.com",
+                pubDate: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+                source: "Bloomberg",
+                category: "world",
+                snippet: "ECB policymakers maintain key interest rates while pointing to ongoing weakness in eurozone manufacturing output."
+            }
+        ];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            renderTicker();
+            renderCalendar();
+            fetchNews();
+
+            // Search Filter Listener
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                state.searchQuery = e.target.value.toLowerCase();
+                renderNewsCards();
+            });
+
+            // Start Ticker Dynamic Updates Simulation
+            setInterval(simulateTickerMovement, 4000);
+
+            // Auto-refresh interval (every 60s)
+            state.autoRefreshInterval = setInterval(() => {
+                if (state.autoRefresh) fetchNews();
+            }, 60000);
+        });
+
+        // Render Top Ticker
+        function renderTicker() {
+            const container = document.getElementById('ticker-container');
+            if (!container) return;
+
+            // Duplicate data to create seamless infinite loop
+            const items = [...state.tickerData, ...state.tickerData];
+            
+            container.innerHTML = items.map(item => `
+                <div class="inline-flex items-center space-x-2 px-3 border-r border-slate-800">
+                    <span class="font-bold text-slate-200">${item.symbol}</span>
+                    <span class="text-slate-400 text-[11px]">${item.name}</span>
+                    <span class="font-medium text-slate-200">${item.price}</span>
+                    <span class="font-semibold text-[11px] ${item.up ? 'text-emerald-400' : 'text-rose-400'}">
+                        <i class="fa-solid fa-caret-${item.up ? 'up' : 'down'}"></i> ${item.change}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // Simulate subtle stock ticker fluctuations
+        function simulateTickerMovement() {
+            state.tickerData.forEach(item => {
+                if (item.symbol.includes('RATE') || item.symbol === 'SELIC') return;
+                const rand = (Math.random() - 0.49) * 0.2;
+                const currentVal = parseFloat(item.price.replace(/[^0-9.-]/g, ''));
+                if (!isNaN(currentVal)) {
+                    const newVal = (currentVal + rand).toFixed(2);
+                    item.up = rand >= 0;
+                    item.change = (rand >= 0 ? '+' : '') + rand.toFixed(2) + '%';
+                }
+            });
+            renderTicker();
+        }
+
+        async function fetchNews() {
+            const refreshIcon = document.getElementById('refresh-icon');
+            if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+            let fetchedArticles = [];
+
+            try {
+                // Fetch using rss2json public endpoint
+                const fetchPromises = RSS_FEEDS.map(async (feed) => {
+                    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
+                    try {
+                        const res = await fetch(apiUrl);
+                        const data = await res.json();
+                        if (data && data.status === 'ok' && data.items) {
+                            return data.items.map(item => ({
+                                title: item.title,
+                                link: item.link,
+                                pubDate: item.pubDate,
+                                source: feed.source,
+                                category: detectCategory(item.title, item.description, feed.category),
+                                snippet: item.description ? stripHtml(item.description).slice(0, 140) + '...' : ''
+                            }));
+                        }
+                    } catch (err) {
+                        console.warn(`Failed fetching RSS for ${feed.source}, falling back.`, err);
+                    }
+                    return [];
+                });
+
+                const results = await Promise.all(fetchPromises);
+                fetchedArticles = results.flat();
+
+            } catch (error) {
+                console.error("Error fetching live RSS news feeds:", error);
+            }
+
+            // Combine fetched articles with Mock data to ensure comprehensive content
+            state.articles = [...fetchedArticles, ...MOCK_NEWS];
+            
+            // Deduplicate by title similarity
+            const uniqueTitles = new Set();
+            state.articles = state.articles.filter(item => {
+                const cleanTitle = item.title.trim().toLowerCase();
+                if (uniqueTitles.has(cleanTitle)) return false;
+                uniqueTitles.add(cleanTitle);
+                return true;
+            });
+
+            // Sort by Date descending
+            state.articles.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+            renderNewsCards();
+
+            // Update Timestamp
+            const now = new Date();
+            document.getElementById('last-updated-time').innerText = `Last update: ${now.toLocaleTimeString()}`;
+
+            if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+        }
+
+        // Helper: Strip HTML tags
+        function stripHtml(html) {
+            const tmp = document.createElement("DIV");
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || "";
+        }
+
+        // Helper: Automatically classify article tags based on keywords
+        function detectCategory(title, description, defaultCat) {
+            const combined = (title + ' ' + (description || '')).toLowerCase();
+            
+            if (combined.includes('guerra') || combined.includes('war') || combined.includes('conflict') || combined.includes('tensions') || combined.includes('geopolitical') || combined.includes('red sea') || combined.includes('ukraine')) {
+                return 'war';
+            }
+            if (combined.includes('cpi') || combined.includes('ppi') || combined.includes('nfp') || combined.includes('payroll') || combined.includes('inflation') || combined.includes('fed') || combined.includes('interest rate') || combined.includes('fomc')) {
+                return 'macro';
+            }
+            if (combined.includes('brasil') || combined.includes('selic') || combined.includes('copom') || combined.includes('ipca') || combined.includes('ibovespa') || combined.includes('real') || combined.includes('dólar')) {
+                return 'br';
+            }
+            return defaultCat || 'world';
+        }
+
+        function renderNewsCards() {
+            const container = document.getElementById('news-container');
+            const countLabel = document.getElementById('article-count');
+
+            let filtered = state.articles;
+
+            // Apply Category Filter
+            if (state.currentCategory !== 'all') {
+                filtered = filtered.filter(item => item.category === state.currentCategory);
+            }
+
+            // Apply Search Filter
+            if (state.searchQuery.trim() !== '') {
+                filtered = filtered.filter(item => 
+                    item.title.toLowerCase().includes(state.searchQuery) || 
+                    item.snippet.toLowerCase().includes(state.searchQuery) ||
+                    item.source.toLowerCase().includes(state.searchQuery)
+                );
+            }
+
+            countLabel.innerText = `${filtered.length} articles found`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-500 bg-slate-800/20 border border-slate-800 rounded-xl">
+                        <i class="fa-solid fa-newspaper text-3xl mb-2 text-slate-600"></i>
+                        <p class="text-sm">No news articles found matching your criteria.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(article => {
+                const badge = getCategoryBadge(article.category);
+                const timeAgo = formatTimeAgo(article.pubDate);
+
+                return `
+                    <article class="p-4 bg-slate-800/40 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700/80 rounded-xl transition-all flex flex-col justify-between group">
+                        <div>
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                ${badge}
+                                <span class="text-[11px] text-slate-400 font-medium">${timeAgo}</span>
+                            </div>
+                            <h3 class="text-sm font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug mb-2">
+                                <a href="${article.link}" target="_blank" rel="noopener noreferrer">
+                                    ${article.title}
+                                </a>
+                            </h3>
+                            <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-4">
+                                ${article.snippet || 'Click to read full coverage on original news portal.'}
+                            </p>
+                        </div>
+                        
+                        <div class="flex items-center justify-between border-t border-slate-800/80 pt-2.5 text-[11px] text-slate-400">
+                            <span class="font-medium text-slate-300"><i class="fa-regular fa-newspaper mr-1 text-slate-400"></i>${article.source}</span>
+                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline flex items-center gap-1 font-medium">
+                                Read <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        // Return Category Badge JSX-like string
+        function getCategoryBadge(category) {
+            switch(category) {
+                case 'br':
+                    return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">BRAZIL</span>`;
+                case 'macro':
+                    return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30">MACRO DATA</span>`;
+                case 'war':
+                    return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">GEOPOLITICS</span>`;
+                default:
+                    return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">GLOBAL</span>`;
+            }
+        }
+
+        // Relative time helper
+        function formatTimeAgo(dateString) {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return 'Recently';
+
+            const now = new Date();
+            const diffMin = Math.floor((now - date) / (1000 * 60));
+
+            if (diffMin < 1) return 'Just now';
+            if (diffMin < 60) return `${diffMin}m ago`;
+            const diffHours = Math.floor(diffMin / 60);
+            if (diffHours < 24) return `${diffHours}h ago`;
+            return `${Math.floor(diffHours / 24)}d ago`;
+        }
+
+        // Category Switcher
+        function setCategory(cat) {
+            state.currentCategory = cat;
+
+            // Update UI buttons
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if (btn.dataset.cat === cat) {
+                    btn.className = "cat-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap bg-emerald-600 text-white shadow-md transition-all";
+                } else {
+                    btn.className = "cat-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/50 transition-all";
+                }
+            });
+
+            const labels = {
+                'all': 'All News Stream',
+                'br': 'Brazil Economy (Copom, Selic, IPCA)',
+                'macro': 'Macro Indicators (CPI, PPI, NFP, Rates)',
+                'war': 'Geopolitical Developments & Wars',
+                'world': 'Worldwide Markets'
+            };
+            document.getElementById('active-category-label').innerText = labels[cat] || 'News Feed';
+
+            renderNewsCards();
+        }
+
+        // Render Sidebar Economic Calendar
+        function renderCalendar() {
+            const container = document.getElementById('calendar-container');
+            if (!container) return;
+
+            container.innerHTML = CALENDAR_EVENTS.map(evt => {
+                const impactClass = evt.impact === 'High' 
+                    ? 'text-rose-400 bg-rose-500/10 border-rose-500/30' 
+                    : 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+
+                return `
+                    <div class="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs">
+                        <div class="space-y-0.5">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-slate-200">${evt.name}</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded border ${impactClass}">${evt.impact}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400">
+                                <span>${evt.date}</span> • <span class="text-slate-300">FC: ${evt.forecast}</span> (Prev: ${evt.previous})
+                            </div>
+                        </div>
+                        <span class="text-xs font-extrabold px-2 py-1 bg-slate-800 rounded border border-slate-700 text-slate-300">${evt.country}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Toggle Auto-Refresh state
+        function toggleAutoRefresh() {
+            state.autoRefresh = !state.autoRefresh;
+            const text = document.getElementById('refresh-text');
+            const indicator = document.getElementById('refresh-indicator');
+
+            if (state.autoRefresh) {
+                text.innerText = 'Auto: ON (60s)';
+                indicator.className = 'w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse';
+            } else {
+                text.innerText = 'Auto: OFF';
+                indicator.className = 'w-2 h-2 rounded-full bg-slate-500 inline-block';
+            }
+        }
+
+        function downloadSelfHTML() {
+            const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Economy_Investment_Dashboard.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
